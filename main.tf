@@ -220,6 +220,7 @@ resource "aws_instance" "bastion" {
 }
 
 # Key Pair for EC2 Instances
+#ssh-keygen -y -f /path/to/your/private-key.pem > /path/to/your/public-key.pub
 resource "aws_key_pair" "demo-key" {
   key_name   = var.key_name
   public_key = file("/home/admin1/terraform/demo-key.pub")
