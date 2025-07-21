@@ -1,0 +1,59 @@
+#deployment.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-container
+          image: 990636949613.dkr.ecr.us-east-1.amazonaws.com/practices:my-app-v32
+          ports:
+            - containerPort: 3000
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+
+#service.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+  annotations:
+#    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  type: LoadBalancer
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+
+# Tag the below key and value for subnet 
+✅ Public Subnets – for Internet-facing LoadBalancers (you want this)
+These should have:
+Key:   kubernetes.io/role/elb
+Value: 1
+
+And also:
+Key:   kubernetes.io/cluster/<CLUSTER_NAME>
+Value: owned  (or shared, depending on setup)
+
+✅ Private Subnets – for internal LoadBalancers (not needed in your case)
+These should have:
+Key:   kubernetes.io/role/internal-elb
+Value: 1
+
+And:
+Key:   kubernetes.io/cluster/<CLUSTER_NAME>
+Value: owned
