@@ -1,0 +1,213 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Creates an ECR repo, CodeBuild project (inside a VPC), and CodePipeline using CodeStar connection.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Unique name for this pipeline (e.g., myapp, backend, projectX)
+
+  GitHubRepository:
+    Type: String
+    Description: Full GitHub repo ID (e.g., VoiceOwlBot/voice-admin)
+
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: Branch to track (e.g., main, dev)
+
+  CodeStarConnectionArn:
+    Type: String
+    Description: ARN of an existing CodeStar GitHub connection
+
+  CodeBuildServiceRoleArn:
+    Type: String
+    Description: ARN of an existing IAM role for CodeBuild
+
+  CodePipelineServiceRoleArn:
+    Type: String
+    Description: ARN of an existing IAM role for codepipeline
+
+  SERVICENAME:
+    Type: String
+    Description: Name of the microservice
+
+  CLUSTERNAME:
+    Type: String
+    Description: Name of the EKS cluster
+
+  NAMESPACE:
+    Type: String
+    Description: Kubernetes namespace for deployment
+
+  AWSDEFAULTREGION:
+    Type: String
+    Description: AWS region for deployment
+
+  IMAGEREPONAME:
+    Type: String
+    Description: Logical name for the image repo used in deployment
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC where CodeBuild will run
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of subnet IDs in the VPC for CodeBuild to use
+
+  SecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: One or more security groups for CodeBuild to use
+
+  ArtifactBucketName:
+    Type: String
+    Description: Name of an existing S3 bucket for CodePipeline artifacts
+
+Resources:
+
+  ### ECR Repository ###
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${ProjectName}-repo"
+
+  ### CodeBuild Project ###
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${ProjectName}-build"
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: |
+          version: 0.2
+          run-as: root
+
+          phases:
+            install:
+              commands:
+                - apt-get update -y
+                - apt-get install -y openssh-client
+                - echo Installing app dependencies...
+                - curl -O https://s3.ap-south-1.amazonaws.com/amazon-eks/1.23.17/2023-05-11/bin/linux/amd64/kubectl
+                - chmod +x ./kubectl
+                - mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+                - echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+                - kubectl version --client
+                - aws --version
+                - curl --silent --location -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.7.6/argocd-linux-amd64
+                - chmod +x /usr/local/bin/argocd
+                - cp /usr/local/bin/argocd /root/bin
+                - git config --global user.name "voiceowl-ci"
+                - git config --global user.email "ci@voiceowl.ai"
+
+            pre_build:
+              commands:
+                - echo "Fetching SSH key from Secrets Manager"
+                - mkdir -p /root/.ssh
+                - aws secretsmanager get-secret-value --secret-id bitbucket-sshkey --query SecretString --output text > /root/.ssh/id_rsa
+                - chmod 600 /root/.ssh/id_rsa
+                - ssh-keyscan bitbucket.org >> /root/.ssh/known_hosts
+                - aws eks --region $AWS_DEFAULT_REGION update-kubeconfig --name $CLUSTER_NAME
+                - kubectl get nodes
+                - echo eks access confirmed.    
+                - echo $ECR_REPO_URI
+
+            build:
+              commands:
+                - echo Build started on `date`
+                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI
+                - docker buildx build --cache-from $ECR_REPO_URI:latest -t $IMAGE_REPO_NAME:$CODEBUILD_BUILD_NUMBER .
+                - docker tag $IMAGE_REPO_NAME:$CODEBUILD_BUILD_NUMBER $ECR_REPO_URI:$CODEBUILD_BUILD_NUMBER
+                - docker push $ECR_REPO_URI:$CODEBUILD_BUILD_NUMBER
+
+            post_build:
+              commands:
+                - ssh -T git@bitbucket.org || true
+                - git clone git@bitbucket.org:gtsaas/voiceowl-helm.git -b main
+                - cd voiceowl-helm/aps1/prod/$SERVICE_NAME
+                - sed -i "s|image: .*dkr.ecr.*|image: ${ECR_REPO_URI}:${CODEBUILD_BUILD_NUMBER}|" deployment.yaml
+                - git add -A
+                - git commit --allow-empty -m "Updated build number ${CODEBUILD_BUILD_NUMBER} for service"
+                - git push origin main
+                - export ARGO_PWD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+                - argocd login prod-cd.in.voiceowl.ai --grpc-web --username admin --password $ARGO_PWD --insecure
+                - argocd app create $SERVICE_NAME --repo git@bitbucket.org:gtsaas/voiceowl-helm.git --revision main --path aps1/prod/$SERVICE_NAME --dest-server https://kubernetes.default.svc --dest-namespace prod --upsert
+                - argocd app sync $SERVICE_NAME
+                - kubectl get pods -n prod
+
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: SERVICE_NAME
+            Value: !Ref SERVICENAME
+          - Name: ECR_REPO_URI
+            Value: !GetAtt ECRRepository.RepositoryUri
+          - Name: CLUSTER_NAME
+            Value: !Ref CLUSTERNAME
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWSDEFAULTREGION
+          - Name: IMAGE_REPO_NAME
+            Value: !Ref IMAGEREPONAME
+      VpcConfig:
+        VpcId: !Ref VpcId
+        Subnets: !Ref SubnetIds
+        SecurityGroupIds: !Ref SecurityGroupIds
+      ServiceRole: !Ref CodeBuildServiceRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+
+  ### CodePipeline ###
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${ProjectName}-pipeline"
+      RoleArn: !Ref CodePipelineServiceRoleArn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucketName
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: BitbucketSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: 1
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                ConnectionArn: !Ref CodeStarConnectionArn
+                FullRepositoryId: !Ref GitHubRepository
+                BranchName: !Ref GitHubBranch
+                DetectChanges: true
+              RunOrder: 1
+
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              RunOrder: 1
+
+Outputs:
+  PipelineName:
+    Description: Name of the CodePipeline
+    Value: !Ref CodePipeline
+
+  ECRRepositoryUri:
+    Description: URI of the created ECR Repository
+    Value: !GetAtt ECRRepository.RepositoryUri
