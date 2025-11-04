@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: argocd
+  name: argocd-server
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    # if required
+    # alb.ingress.kubernetes.io/group.name: #group_name
+    # alb.ingress.kubernetes.io/group.order: '1'
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/success-codes: '200'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:202533527430:certificate/c33b9c9f-4273-4bf0-9694-f7ba7fbdb2ec
+    alb.ingress.kubernetes.io/backend-protocol: HTTPS
+
+spec:
+  ingressClassName: alb
+  rules:
+    - host: cicd.liaplus.com
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: argocd-server
+              port:
+                number: 443
