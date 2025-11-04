@@ -1,0 +1,288 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: liaplus-prod-aps1-liaplus-v2-backend-svc
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8000
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: liaplus-prod-aps1-liaplus-v2-backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liaplus-prod-aps1-liaplus-v2-backend
+  namespace: prod
+  labels:
+    app: liaplus-prod-aps1-liaplus-v2-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liaplus-prod-aps1-liaplus-v2-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: liaplus-prod-aps1-liaplus-v2-backend
+    spec:
+      serviceAccountName: liaplus-secrets-sa
+      containers:
+        - name: liaplus-prod-aps1-liaplus-v2-backend
+          image: 202533527430.dkr.ecr.ap-south-1.amazonaws.com/liaplus-v2-backend-repo:11
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: DATABASE_URL
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: JWT_SECRET_KEY
+            - name: JWT_ALGORITHM
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: JWT_ALGORITHM
+            - name: ACCESS_TOKEN_EXPIRE_MINUTES
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: ACCESS_TOKEN_EXPIRE_MINUTES
+            - name: REFRESH_TOKEN_EXPIRE_DAYS
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: REFRESH_TOKEN_EXPIRE_DAYS
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: SECRET_KEY
+            - name: DEBUG
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: DEBUG
+            - name: DEBUG
+              value: "true"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AWS_REGION
+            - name: SES_FROM_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: SES_FROM_EMAIL
+            - name: S3_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: S3_BUCKET_NAME
+            - name: MAX_FILE_SIZE
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: MAX_FILE_SIZE
+            - name: FRONTEND_URL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: FRONTEND_URL
+            - name: RECAPTCHA_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RECAPTCHA_SECRET_KEY
+            - name: RECAPTCHA_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RECAPTCHA_ENABLED
+            - name: GOOGLE_CAPTCHA_URL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: GOOGLE_CAPTCHA_URL
+            - name: AZURE_KEYVAULT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AZURE_KEYVAULT_URL
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AZURE_TENANT_ID
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AZURE_CLIENT_ID
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AZURE_CLIENT_SECRET
+            - name: USE_KEYVAULT
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: USE_KEYVAULT
+            - name: RATE_LIMIT_LOGIN_ATTEMPTS
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RATE_LIMIT_LOGIN_ATTEMPTS
+            - name: RATE_LIMIT_OTP_REQUESTS
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RATE_LIMIT_OTP_REQUESTS
+            - name: RATE_LIMIT_PASSWORD_RESET
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RATE_LIMIT_PASSWORD_RESET
+            - name: RATE_LIMIT_WINDOW_MINUTES
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RATE_LIMIT_WINDOW_MINUTES
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: OPENAI_API_KEY
+            - name: OPENAI_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: OPENAI_MODEL
+            - name: OPENAI_MAX_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: OPENAI_MAX_TOKENS
+            - name: OPENAI_TEMPERATURE
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: OPENAI_TEMPERATURE
+            - name: AI_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AI_ENABLED
+            - name: RAG_STORAGE_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RAG_STORAGE_BUCKET
+            - name: RAG_STORAGE_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RAG_STORAGE_PREFIX
+            - name: OPENAI_EMBEDDING_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: OPENAI_EMBEDDING_MODEL
+            - name: OPENAI_VISION_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: OPENAI_VISION_MODEL
+            - name: OPENAI_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: OPENAI_BASE_URL
+            - name: RAG_PROCESSING_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: RAG_PROCESSING_ENABLED
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AZURE_CLIENT_ID
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: liaplus-v2-backend-secret
+                  key: AZURE_CLIENT_SECRET
+            #- name: AZURE_TENANT_ID
+              #valueFrom:
+               # secretKeyRef:
+               #   name: liaplus-v2-backend-secret
+              #    key: AZURE_TENANT_ID
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "600Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2000Mi"
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: aws-secrets-store
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+      volumes:
+        - name: aws-secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: liaplus-v2-backend-secret-store
+          # Uncomment and replace HEALTH_PATH with actual value
+          # readinessProbe:
+          #   httpGet:
+          #     path: /health
+          #     port: 6008
+          #     scheme: HTTP
+          #   initialDelaySeconds: 60
+          #   periodSeconds: 20
+          #   successThreshold: 1
+          #   failureThreshold: 3
+          #   timeoutSeconds: 10
+          # livenessProbe:
+          #   httpGet:
+          #     path: /health
+          #     port: 6008
+          #     scheme: HTTP
+          #   initialDelaySeconds: 60
+          #   periodSeconds: 20
+          #   successThreshold: 1
+          #   failureThreshold: 3
+          #   timeoutSeconds: 10
