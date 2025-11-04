@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: liaplus-apps-ingress
+  namespace: prod
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:202533527430:certificate/c33b9c9f-4273-4bf0-9694-f7ba7fbdb2ec
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  ingressClassName: alb
+  rules:
+    - host: dashboard-prod.liaplus.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: liaplus-prod-aps1-dashboard-v2-svc
+                port:
+                  number: 80
+
+    - host: backend-prod.liaplus.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: liaplus-prod-aps1-liaplus-v2-backend-svc
+                port:
+                  number: 80
+
+    - host: liaplus-engine-prod.liaplus.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: liaplus-prod-aps1-pipecat-setup-svc
+                port:
+                  number: 8081
