@@ -1,0 +1,55 @@
+#AWS Managed Policies 
+1.AmazonEC2ContainerRegistryPowerUser
+2.AmazonEKSClusterPolicy
+3.AmazonS3ReadOnlyAccess
+4.CloudWatchLogsFullAccess
+5.SecretsManagerReadWrite
+
+
+#custom policies
+#eksdescribepolicy
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "eks:DescribeCluster"
+            ],
+            "Resource": "arn:aws:eks:ap-south-1:202533527430:cluster/liaplus-eks-cluster"
+        }
+    ]
+}
+
+#customvpcpolicy
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateNetworkInterface",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DeleteNetworkInterface",
+                "ec2:AttachNetworkInterface",
+                "ec2:DetachNetworkInterface",
+                "ec2:AssignPrivateIpAddresses",
+                "ec2:UnassignPrivateIpAddresses",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeSecurityGroups",
+                "ec2:CreateNetworkInterfacePermission"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
