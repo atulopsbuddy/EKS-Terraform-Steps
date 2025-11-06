@@ -1,0 +1,38 @@
+#Managed Policy
+
+AWSCodePipeline_FullAccess
+
+#Custome Policy
+codestarconnection-policy
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "codestar-connections:UseConnection"
+            ],
+            "Resource": "arn:aws:codeconnections:ap-south-1:202533527430:connection/6c7546e3-1beb-4845-908b-fd3c70c07a40"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::codepipeline-artifact-01",
+                "arn:aws:s3:::codepipeline-artifact-01/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "codebuild:StartBuild",
+                "codebuild:BatchGetBuilds"
+            ],
+            "Resource": "arn:aws:codebuild:ap-south-1:202533527430:project/*"
+        }
+    ]
+}
